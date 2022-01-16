@@ -1,0 +1,948 @@
+IMPORT pandas as pd
+
+# pandas is library used FOR data extraction and manipulation.
+
+IMPORT numpy as  np
+
+# numpy module is use FOR perform numerical task or operations on data.
+
+IMPORT matplotlib.pyplot as plt
+
+# matplot is used FOR data visualization and graphical plotting library FOR creating static, animated, and interactive visualizations .
+
+IMPORT seaborn as sns
+
+IMPORT plotly.express as px
+
+from sklearn.preprocessing IMPORT LabelEncoder
+
+from sklearn.feature_selection IMPORT SelectKBest
+
+from sklearn.feature_selection IMPORT chi2
+
+from sklearn.model_selection IMPORT train_test_split
+
+from xgboost IMPORT XGBClassifier
+
+from sklearn.model_selection IMPORT RandomizedSearchCV
+
+from sklearn.metrics IMPORT confusion_matrix, accuracy_score
+
+#####################
+
+from sklearn.neighbors IMPORT KNeighborsClassifier
+
+# from sklearn.model_selection IMPORT train_test_split
+
+from sklearn.preprocessing IMPORT StandardScaler
+
+IMPORT tkinter as tk
+
+
+
+######################
+
+
+
+
+
+SET df TO pd.read_csv(r'C:\Users\RohanRVC\Documents\Kidney_disease_predicition/kidney_disease.csv')
+
+
+
+df.head()
+
+
+
+SET columns TO pd.read_csv('C:/Users/RohanRVC/Documents/Kidney_disease_predicition/data_description.txt', sep='-')
+
+SET columns TO columns.reset_index()
+
+
+
+SET columns.columns TO ['cols', 'abb_col_names']
+
+columns
+
+
+
+df.head()
+
+
+
+SET df.columns TO columns['abb_col_names'].values
+
+df.head()
+
+
+
+df.dtypes
+
+
+
+
+
+DEFINE FUNCTION convert_dtype(df, feature):
+
+    SET df[feature] TO pd.to_numeric(df[feature], errors='coerce')
+
+
+
+
+
+SET features TO ['packed cell volume', 'white blood cell count', 'red blood cell count']
+
+
+
+FOR feature IN features:
+
+    convert_dtype(df, feature)
+
+
+
+df.dtypes
+
+
+
+df.drop('id', axis=1, inplace=True)
+
+
+
+
+
+DEFINE FUNCTION extract_cat_num(df):
+
+    SET cat_col TO [col FOR col IN df.columns IF df[col].dtype EQUALS 'object']
+
+    SET num_col TO [col FOR col IN df.columns IF df[col].dtype != 'object']
+
+    RETURN cat_col, num_col
+
+
+
+
+
+extract_cat_num(df)
+
+
+
+SET cat_col, num_col TO extract_cat_num(df)
+
+
+
+cat_col
+
+
+
+num_col
+
+
+
+FOR col IN cat_col:
+
+    OUTPUT('{} has {} values '.format(col, df[col].unique()))
+
+    OUTPUT('\n')
+
+
+
+df['diabetes mellitus'].replace(to_replace={'\tno': 'no', '\tyes': 'yes'}, inplace=True)
+
+SET df['coronary artery disease'] TO df['coronary artery disease'].replace(to_replace='\tno', value='no')
+
+SET df['class'] TO df['class'].replace(to_replace='ckd\t', value='ckd')
+
+
+
+FOR col IN cat_col:
+
+    OUTPUT('{} has {} values '.format(col, df[col].unique()))
+
+    OUTPUT('\n')
+
+
+
+# analising distribution of data
+
+len(num_col)
+
+
+
+plt.figure(figsize=(30, 20))
+
+FOR i, feature IN enumerate(num_col):
+
+    plt.subplot(5, 3, i + 1)
+
+    df[feature].hist()
+
+    plt.title(feature)
+
+
+
+##ckd, not ckd
+
+
+
+len(cat_col)
+
+
+
+plt.figure(figsize=(20, 20))
+
+FOR i, feature IN enumerate(cat_col):
+
+    plt.subplot(4, 3, i + 1)
+
+    sns.countplot(df[feature])
+
+
+
+sns.countplot(df['class'])
+
+
+
+# heat Map #co relation
+
+plt.figure(figsize=(10, 8))
+
+df.corr()
+
+sns.heatmap(df.corr(), annot=True)
+
+
+
+# stats
+
+df.groupby(['red blood cells', 'class'])['red blood cell count'].agg(['count', 'mean', 'median', 'min', 'max'])
+
+
+
+px.violin(df, y='red blood cell count', x='class', color='class')  # max and Min
+
+
+
+df.columns
+
+
+
+px.scatter(df, x='haemoglobin', y='packed cell volume')
+
+
+
+SET grid TO sns.FacetGrid(df, hue='class', aspect=2)
+
+grid.map(sns.kdeplot, 'red blood cell count')
+
+grid.add_legend()
+
+
+
+
+
+# automate analysis
+
+DEFINE FUNCTION violin(col):
+
+    SET fig TO px.violin(df, y=col, x='color', color='class', box=True)
+
+    RETURN fig.show()
+
+
+
+
+
+DEFINE FUNCTION scatters(col1, col2):
+
+    SET fig TO px.scatter(df, x=col1, y=col2, color='class')
+
+    RETURN fig.show()
+
+
+
+
+
+# from this function we can plot any colums line gragh within single line
+
+DEFINE FUNCTION kde_plot(feature):
+
+    SET grid TO sns.FacetGrid(df, hue='class', aspect=2)
+
+    grid.map(sns.kdeplot, feature)
+
+    grid.add_legend()
+
+
+
+
+
+kde_plot('red blood cell count')
+
+
+
+scatters('packed cell volume', 'haemoglobin')  # less then 13 positive
+
+
+
+px.violin(df, y='packed cell volume', x='class', color='class')
+
+
+
+scatters('red blood cell count', 'albumin')
+
+
+
+df.isna().sum().sort_values(ascending=False)  # mising values
+
+
+
+##normal distribution
+
+##fill mising value with mean, median , std dev ,
+
+
+
+sns.countplot(df['red blood cells'])
+
+
+
+SET data TO df.copy()
+
+
+
+data.head()
+
+
+
+data['red blood cells'].dropna().sample()  # random value
+
+
+
+data['red blood cells'].isnull().sum()  # missing values
+
+
+
+SET random_sample TO data['red blood cells'].dropna().sample(152)  # random selcet value
+
+random_sample
+
+
+
+data[data['red blood cells'].isnull()].index
+
+
+
+random_sample.index
+
+
+
+SET random_sample.index TO data[data['red blood cells'].isnull()].index
+
+
+
+random_sample
+
+
+
+SET data.loc[data['red blood cells'].isnull(), 'red blood cells'] TO random_sample
+
+
+
+data.head()
+
+
+
+data['red blood cells'].isnull().sum()
+
+
+
+sns.countplot(data['red blood cells'])
+
+
+
+
+
+DEFINE FUNCTION Random_value_Imputation(feature):  # function FOR cleaning data msiisng
+
+    SET random_sample TO data[feature].dropna().sample(data[feature].isnull().sum())
+
+    SET random_sample.index TO data[data[feature].isnull()].index
+
+    SET data.loc[data[feature].isnull(), feature] TO random_sample
+
+
+
+
+
+data[num_col].isnull().sum()
+
+
+
+FOR col IN num_col:
+
+    Random_value_Imputation(col)
+
+
+
+data[num_col].isnull().sum()
+
+
+
+data[cat_col].isnull().sum()
+
+
+
+Random_value_Imputation(' pus cell')
+
+
+
+data['pus cell clumps'].mode()[0]
+
+
+
+
+
+DEFINE FUNCTION impute_mode(feature):
+
+    SET mode TO data[feature].mode()[0]
+
+    SET data[feature] TO data[feature].fillna(mode)
+
+
+
+
+
+FOR col IN cat_col:
+
+    impute_mode(col)
+
+
+
+data[cat_col].isnull().sum()
+
+
+
+data.head()
+
+
+
+# cat to num
+
+
+
+FOR col IN cat_col:
+
+    OUTPUT('{} has {} categories'.format(col, data[col].nunique()))
+
+
+
+##label encoding
+
+##normal -0
+
+##abnormal - 1
+
+##use case --100
+
+
+
+SET le TO LabelEncoder()
+
+
+
+FOR col IN cat_col:
+
+    SET data[col] TO le.fit_transform(data[col])
+
+
+
+data.head()
+
+
+
+SET ind_col TO [col FOR col IN data.columns IF col != 'class']
+
+SET dep_col TO 'class'
+
+
+
+SET X TO data[ind_col]
+
+SET y TO data[dep_col]
+
+
+
+X.head()
+
+
+
+y
+
+
+
+SET ordered_rank_features TO SelectKBest(score_func=chi2, k=20)
+
+SET ordered_feature TO ordered_rank_features.fit(X, y)
+
+
+
+ordered_feature
+
+
+
+ordered_feature.scores_
+
+
+
+SET datascores TO pd.DataFrame(ordered_feature.scores_, columns=['Score'])
+
+
+
+datascores
+
+
+
+X.columns
+
+
+
+SET dfcols TO pd.DataFrame(X.columns)
+
+dfcols
+
+
+
+SET features_rank TO pd.concat([dfcols, datascores], axis=1)
+
+features_rank
+
+
+
+SET features_rank.columns TO ['features', 'Score']
+
+features_rank
+
+
+
+features_rank.nlargest(10, 'Score')
+
+
+
+SET selected_columns TO features_rank.nlargest(10, 'Score')['features'].values
+
+
+
+selected_columns
+
+
+
+SET X_new TO data[selected_columns]
+
+
+
+X_new.head()
+
+
+
+len(X_new)
+
+
+
+X_new.shape
+
+
+
+SET X_train, X_test, y_train, y_test TO train_test_split(X_new, y, random_state=0, test_size=0.25)
+
+
+
+OUTPUT(X_train.shape)
+
+
+
+OUTPUT(X_test.shape)
+
+
+
+y_train.value_counts()
+
+
+
+XGBClassifier()
+
+
+
+SET params TO {
+
+    'learning_rate': [0.05, 0.20, 0.25],
+
+    'max_depth': [5, 8, 10],
+
+    'min_child_weight': [1, 3, 5, 7],
+
+    'gamma': [0.0, 0.1, 0.2, 0.4],
+
+    'colsample_bytree': [0.3, 0.4, 0.7]
+
+
+
+}
+
+
+
+SET classifier TO XGBClassifier()
+
+
+
+SET random_search TO RandomizedSearchCV(classifier, param_distributions=params, n_iter=5, scoring='roc_auc', n_jobs=-1, cv=5,
+
+                                   verbose=3)
+
+
+
+random_search.fit(X_train, y_train)
+
+
+
+random_search.best_estimator_
+
+
+
+random_search.best_params_
+
+
+
+SET classifier TO XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,
+
+                           colsample_bynode=1, colsample_bytree=0.7, gamma=0.0, gpu_id=-1,
+
+                           importance_type='gain', interaction_constraints='',
+
+                           learning_rate=0.05, max_delta_step=0, max_depth=8,
+
+                           min_child_weight=3, monotone_constraints='()',
+
+                           n_estimators=100, n_jobs=12, num_parallel_tree=1, random_state=0,
+
+                           reg_alpha=0, reg_lambda=1, scale_pos_weight=1, subsample=1,
+
+                           tree_method='exact', validate_parameters=1, verbosity=None)
+
+
+
+classifier.fit(X_train, y_train)
+
+
+
+SET y_pred TO classifier.predict(X_test)
+
+
+
+y_pred
+
+
+
+confusion_matrix(y_test, y_pred)
+
+
+
+accuracy_score(y_test, y_pred)
+
+
+
+OUTPUT("Accuracy is ", int(accuracy_score(y_test, y_pred) * 100), "%")
+
+
+
+
+
+DEFINE CLASS Predictor:
+
+
+
+    DEFINE FUNCTION has_disease(self, row):
+
+        self.train(self)
+
+        RETURN True IF self.predict(self, row) EQUALS 1 else False
+
+
+
+    @staticmethod
+
+    DEFINE FUNCTION train(self):
+
+        SET df TO pd.read_csv(r'C:\Users\RohanRVC\Documents\heart attack predictor/dataset.csv')
+
+        SET dataset TO df
+
+        SET self.standardScaler TO StandardScaler()
+
+        SET columns_to_scale TO ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak',
+
+                            'slope', 'ca', 'thal']
+
+        SET dataset[columns_to_scale] TO self.standardScaler.fit_transform(dataset[columns_to_scale])
+
+        SET y TO dataset['target']
+
+        SET X TO dataset.drop(['target'], axis=1)
+
+        SET X_train, X_test, y_train, y_test TO train_test_split(X, y, test_size=0.33, random_state=0)
+
+        SET self.knn_classifier TO KNeighborsClassifier(n_neighbors=8)
+
+        self.knn_classifier.fit(X, y)
+
+        SET score TO self.knn_classifier.score(X_test, y_test)
+
+        OUTPUT('--Training Complete--')
+
+        OUTPUT('Score: ' + str(score))
+
+
+
+    @staticmethod
+
+    DEFINE FUNCTION predict(self, row):
+
+        SET user_df TO np.array(row).reshape(1, 13)
+
+        SET user_df TO self.standardScaler.transform(user_df)
+
+        SET predicted TO self.knn_classifier.predict(user_df)
+
+        OUTPUT("Predicted: " + str(predicted[0]))
+
+        RETURN predicted[0]
+
+
+
+
+
+SET # row TO [[37, 1, 2, 130, 250, 0, 1, 187, 0, 3.5, 0, 0, 2]]
+
+SET # row TO [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+
+SET # col TO ['age', 'sex', 'cp', 'trestbps', 'chol', 'fbs', 'restecg', 'thalach', 'exang', 'oldpeak', 'slope', 'ca', 'thal']
+
+# FOR i IN range(0, 13):
+
+SET #     row[0][i] TO INPUT(f"Enter {col[i]} : ")  # OverWriting the List
+
+
+
+
+
+SET la TO str()
+
+
+
+
+
+DEFINE FUNCTION onClick():
+
+    SET row TO [[age.get(), gender.get(), cp.get(), tbps.get(), chol.get(), fbs.get(), restecg.get(), thalach.get(),
+
+            exang.get(), oldpeak.get(), slope.get(), ca.get(), thal.get()]]
+
+    OUTPUT(row)
+
+    SET predictor TO Predictor()
+
+    SET o TO predictor.has_disease(row)
+
+    SET root2 TO tk.Tk()
+
+    root2.title("Prediction Window")
+
+    IF (o EQUALS True):
+
+        OUTPUT("Person Have Chronic Kidney Disease")
+
+        SET la TO "Person Have Chronic Kidney Disease"
+
+        tk.Label(root2, text=la, font=("times new roman", 20), fg="white", bg="maroon", height=2).grid(row=15, column=1)
+
+    ELSE:
+
+        OUTPUT("Person Is Healthy")
+
+        SET la TO "Person Is Healthy"
+
+        tk.Label(root2, text=la, font=("times new roman", 20), fg="white", bg="green", height=2).grid(row=15, column=1)
+
+
+
+    RETURN True
+
+
+
+
+
+SET root TO tk.Tk()
+
+root.title("Heart Disease Predictor")
+
+tk.Label(root, text="""Fill your Details""", font=("times new roman", 12)).grid(row=0)
+
+
+
+# tk.Label(root,text='Patience Name',padx=20, font=("times new roman", 12)).grid(row=1,column=0)
+
+SET # #patience_name TO tk.IntVar()
+
+# #tk.Entry(root,textvariable=patience_name).grid(row=1,column=1)
+
+# tk.Label(root,text='Patience Name-:',padx=20, font=("times new roman", 12)).grid(row=3,column=0)
+
+SET # cp TO tk.IntVar()
+
+# tk.Entry(root,textvariable=cp).grid(row=3,column=1)
+
+
+
+tk.Label(root, text='Age', padx=20, font=("times new roman", 12)).grid(row=1, column=0)
+
+SET age TO tk.IntVar()
+
+tk.Entry(root, textvariable=age).grid(row=1, column=1)
+
+
+
+tk.Label(root, text="""Sex""", padx=20, font=("times new roman", 12)).grid(row=2, column=0)
+
+SET gender TO tk.IntVar()
+
+tk.Radiobutton(root, text="Male (1)", padx=20, variable=gender, value=1).grid(row=2, column=1)
+
+tk.Radiobutton(root, text="Female (0)", padx=20, variable=gender, value=0).grid(row=2, column=2)
+
+
+
+tk.Label(root, text='White blood cell count', font=("times new roman", 12)).grid(row=3, column=0)
+
+SET cp TO tk.IntVar()
+
+tk.Entry(root, textvariable=cp).grid(row=3, column=1)
+
+
+
+tk.Label(root, text='blood Urea', font=("times new roman", 12)).grid(row=4, column=0)
+
+SET tbps TO tk.IntVar()
+
+tk.Entry(root, textvariable=tbps).grid(row=4, column=1)
+
+
+
+tk.Label(root, text='blood glucose random', font=("times new roman", 12)).grid(row=5, column=0)
+
+SET chol TO tk.IntVar()
+
+tk.Entry(root, textvariable=chol).grid(row=5, column=1)
+
+
+
+tk.Label(root, text="""fbs:serum creatinine	""", padx=20, font=("times new roman", 12)).grid(row=6, column=0)
+
+SET fbs TO tk.IntVar()
+
+tk.Radiobutton(root, text="True (1)", padx=20, variable=fbs, value=1).grid(row=6, column=1)
+
+tk.Radiobutton(root, text="False (0)", padx=20, variable=fbs, value=0).grid(row=6, column=2)
+
+
+
+tk.Label(root, text="""restecg: packed cell volume""", padx=20, font=("times new roman", 12)).grid(row=7, column=0)
+
+SET restecg TO tk.IntVar()
+
+tk.Radiobutton(root, text="0", padx=20, variable=restecg, value=0).grid(row=7, column=1)
+
+tk.Radiobutton(root, text="1", padx=20, variable=restecg, value=1).grid(row=7, column=2)
+
+tk.Radiobutton(root, text="2", padx=20, variable=restecg, value=2).grid(row=7, column=3)
+
+
+
+tk.Label(root, text='albumin', font=("times new roman", 12)).grid(row=8, column=0)
+
+SET thalach TO tk.IntVar()
+
+tk.Entry(root, textvariable=thalach).grid(row=8, column=1)
+
+
+
+tk.Label(root, text="""haemoglobin """, padx=20, font=("times new roman", 12)).grid(row=9, column=0)
+
+SET exang TO tk.IntVar()
+
+tk.Radiobutton(root, text="Yes (1)", padx=20, variable=exang, value=1).grid(row=9, column=1)
+
+tk.Radiobutton(root, text="No (0)", padx=20, variable=exang, value=0).grid(row=9, column=2)
+
+
+
+tk.Label(root, text='oldpeak : ST depression induced by exercise relative to rest', font=("times new roman", 12)).grid(
+
+    row=10, column=0)
+
+SET oldpeak TO tk.DoubleVar()
+
+tk.Entry(root, textvariable=oldpeak).grid(row=10, column=1)
+
+
+
+tk.Label(root, text="""slope: the slope of the peak exercise ST segment""", padx=20, font=("times new roman", 12)).grid(
+
+    row=11, column=0)
+
+SET slope TO tk.IntVar()
+
+tk.Radiobutton(root, text="upsloping (0)", padx=20, variable=slope, value=0).grid(row=11, column=1)
+
+tk.Radiobutton(root, text="flat (1)", padx=20, variable=slope, value=1).grid(row=11, column=2)
+
+tk.Radiobutton(root, text="downsloping (2)", padx=20, variable=slope, value=2).grid(row=11, column=3)
+
+
+
+tk.Label(root, text="""ca: number of major vessels (0-4) colored by flourosop""", padx=20,
+
+         font=("times new roman", 12)).grid(row=12, column=0)
+
+SET ca TO tk.IntVar()
+
+tk.Radiobutton(root, text="0", padx=20, variable=ca, value=0).grid(row=12, column=1)
+
+tk.Radiobutton(root, text="1", padx=20, variable=ca, value=1).grid(row=12, column=2)
+
+tk.Radiobutton(root, text="2", padx=20, variable=ca, value=2).grid(row=12, column=3)
+
+tk.Radiobutton(root, text="3", padx=20, variable=ca, value=3).grid(row=12, column=4)
+
+tk.Radiobutton(root, text="4", padx=20, variable=ca, value=4).grid(row=12, column=5)
+
+
+
+tk.Label(root, text="""thal""", padx=20, font=("times new roman", 12)).grid(row=13, column=0)
+
+SET thal TO tk.IntVar()
+
+tk.Radiobutton(root, text="0", padx=20, variable=thal, value=0).grid(row=13, column=1)
+
+tk.Radiobutton(root, text="1", padx=20, variable=thal, value=1).grid(row=13, column=2)
+
+tk.Radiobutton(root, text="2", padx=20, variable=thal, value=2).grid(row=13, column=3)
+
+tk.Radiobutton(root, text="3", padx=20, variable=thal, value=3).grid(row=13, column=4)
+
+
+
+tk.Button(root, text='Predict', command=onClick).grid(row=14, column=2, sticky=tk.W, pady=4)
+
+
+
+root.mainloop()
+
